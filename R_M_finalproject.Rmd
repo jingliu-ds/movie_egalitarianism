@@ -1,0 +1,89 @@
+---
+title: "movie_egalitarianism"
+author: "Jing Liu"
+date: "11/21/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data Cleaning
+#### Pull the Survey Result from Google Drive, and Shorten the Column Names into Availabe to use. (Finish in Google Drive Excel)
+#### Load the Data Sets from Google Drive(export in .csv format) and convert categorical data into corresponding numeric data.
+```{r}
+survey <- read.csv("/Users/rivertemple/Downloads/movie_egalitarianism.csv", stringsAsFactors = FALSE)
+movie <- read.csv("/Users/rivertemple/Downloads/Movie Ratings.csv")
+att <- read.csv("/Users/rivertemple/Downloads/attitude.csv")
+```
+Transform and Remove Unuasable Data of *movie* data set(movie *Sing* was removed during the survey)
+```{r}
+movie['rate'] <- movie[,1]
+movie[,1] <- NULL
+names(movie) <- c("movie","rate")
+mr <- movie
+mrn <- mr[-10,] 
+rownames(mrn) <- 1:24
+```
+
+Convert Movie Preference (column 5 to 28 in *survey*) by Function
+The Criteria is :Scores for movie responses:
+Survey Response Score:
+“Liked it”= +1
+“Didn’t like it” = -1
+“Never saw it”=0
+Movie score:
+Movies that pass = +1
+Movies that fail = -1
+Subject’s total score = SUM(survey response score* movie score )
+```{r}
+for (i in 0:23){
+    survey[5+i][survey[5+i] == 'Liked it'] <- 1 * mr[1+i,2]
+    survey[5+i][survey[5+i] == "Didn't like it"] <- -1 * mr[1+i,2]
+    survey[5+i][survey[5+i] == 'Never saw it'] <- 0
+    }
+```
+
+Adjust the Order of data set *attitude* According to Survey(Move no.9 to no.1)
+```{r}
+insertRow <- function(existingDF, newrow, r) {
+  existingDF[seq(r+1,nrow(existingDF)+1),] <- existingDF[seq(r,nrow(existingDF)),]
+  existingDF[r,] <- newrow
+  existingDF
+}
+attn <- insertRow(att, att[9,], 1)
+attn2 <- attn[-10,] 
+attn2
+```
+
+Convert Attitude Categorical Option into Numeric Data
+```{r}
+for (i in 0:10){
+    survey[29+i][survey[29+i] == 'Strongly agree'] <- attn2[1+i,2]
+    survey[29+i][survey[29+i] == 'Somewhat agree'] <- attn2[1+i,3]
+    survey[29+i][survey[29+i] == 'No opinion'] <- attn2[1+i,4]
+    survey[29+i][survey[29+i] == 'Somewhat disagree'] <- attn2[1+i,5]
+    survey[29+i][survey[29+i] == 'Strongly disagree'] <- attn2[1+i,6]
+}
+```
+
+#### Sum Scores for both Movie Preference and Attitude
+```{r}
+survey[5:39] <- sapply(survey[5:39],as.numeric)
+#sapply(survey, class)
+survey['movScor'] <- rowSums(survey[,5:28])
+survey['attScor'] <- rowSums(survey[,29:39])
+```
+
+#### Form *testdf1*, which include *Gender, Religious, Influence, Age, movScor and attScor*.
+```{r}
+library(knitr)
+library(kableExtra)
+library(dplyr)
+testdf1 <- survey[,c(1:4,40:41)]
+testdf1 %>%
+  kable(format = "html", caption = "Survey of Movie Preference and Attitude of Egalitarianism") %>%
+  kable_styling(font = 20, "bordered", full_width = T)
+```
+
